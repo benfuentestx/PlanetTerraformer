@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Planet Terraformer - Cinematic Experience</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Courier New', monospace;
+            overflow: hidden;
+            background: #000;
+            color: #fff;
+        }
+
+        #canvas-container {
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+
+        /* Text Overlay */
+        #text-overlay {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            pointer-events: none;
+            z-index: 100;
+            width: 80%;
+            max-width: 800px;
+        }
+
+        #narrative-text {
+            font-size: 32px;
+            font-weight: 300;
+            letter-spacing: 2px;
+            text-shadow: 0 0 20px rgba(0, 255, 255, 0.8), 0 0 40px rgba(0, 255, 255, 0.4);
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            line-height: 1.6;
+        }
+
+        #narrative-text.show {
+            opacity: 1;
+        }
+
+        /* Loading Screen */
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            transition: opacity 1s ease-out;
+        }
+
+        #loading-screen.hidden {
+            opacity: 0;
+            pointer-events: none;
+        }
+
+        .loading-spinner {
+            width: 60px;
+            height: 60px;
+            border: 4px solid rgba(0, 255, 255, 0.1);
+            border-top: 4px solid #0ff;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        #loading-text {
+            font-size: 18px;
+            color: #0ff;
+            letter-spacing: 3px;
+        }
+
+        /* Controls */
+        #controls {
+            position: fixed;
+            bottom: 30px;
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 200;
+            display: flex;
+            gap: 15px;
+            opacity: 0;
+            transition: opacity 0.5s;
+        }
+
+        #controls.show {
+            opacity: 1;
+        }
+
+        button {
+            background: rgba(0, 255, 255, 0.2);
+            border: 2px solid #0ff;
+            color: #0ff;
+            padding: 12px 30px;
+            font-size: 16px;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            letter-spacing: 2px;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+
+        button:hover {
+            background: rgba(0, 255, 255, 0.4);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.6);
+            transform: scale(1.05);
+        }
+
+        button:active {
+            transform: scale(0.95);
+        }
+
+        /* Fade overlay for transitions */
+        #fade-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            opacity: 1;
+            pointer-events: none;
+            z-index: 50;
+            transition: opacity 2s ease-in-out;
+        }
+
+        #fade-overlay.transparent {
+            opacity: 0;
+        }
+
+        /* Progress indicator */
+        #progress-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            width: 0%;
+            height: 3px;
+            background: linear-gradient(90deg, #0ff, #00ffaa);
+            box-shadow: 0 0 10px #0ff;
+            transition: width 0.5s ease;
+            z-index: 150;
+        }
+
+        /* Fast Forward Button */
+        #fast-forward-btn {
+            position: fixed;
+            bottom: 30px;
+            right: 30px;
+            width: 60px;
+            height: 60px;
+            background: rgba(0, 255, 255, 0.2);
+            border: 2px solid #0ff;
+            border-radius: 50%;
+            color: #0ff;
+            font-size: 24px;
+            cursor: pointer;
+            z-index: 500;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: all 0.3s;
+            backdrop-filter: blur(10px);
+        }
+
+        #fast-forward-btn:hover {
+            background: rgba(0, 255, 255, 0.4);
+            box-shadow: 0 0 20px rgba(0, 255, 255, 0.8);
+            transform: scale(1.1);
+        }
+
+        #fast-forward-btn:active {
+            transform: scale(0.95);
+        }
+
+        /* Conference Room Scene */
+        #conference-room {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: none;
+            z-index: 300;
+            opacity: 0;
+            transition: opacity 1s ease-in-out;
+            pointer-events: none;
+        }
+
+        #conference-room.show {
+            opacity: 1;
+        }
+
+        #dialogue-box {
+            display: none; /* Hidden - no UI overlay */
+        }
+
+        #speaker-name {
+            display: none;
+        }
+
+        #dialogue-text {
+            display: none;
+        }
+
+        .speaker-indicators {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            display: flex;
+            gap: 40px;
+        }
+
+        .speaker-indicator {
+            width: 80px;
+            height: 80px;
+            border-radius: 50%;
+            background: rgba(11, 61, 145, 0.3);
+            border: 3px solid rgba(11, 61, 145, 0.5);
+            transition: all 0.3s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 30px;
+        }
+
+        .speaker-indicator.active {
+            background: rgba(11, 61, 145, 0.8);
+            border-color: #0ff;
+            box-shadow: 0 0 30px rgba(0, 255, 255, 0.8);
+            transform: scale(1.2);
+        }
+
+        /* Training Montage */
+        #training-montage {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 400;
+            transition: opacity 2s ease-out;
+        }
+
+        #montage-text {
+            font-size: 48px;
+            color: #fff;
+            text-align: center;
+            letter-spacing: 4px;
+            opacity: 0;
+            transition: opacity 1.5s ease-in-out;
+            max-width: 90%;
+            line-height: 1.4;
+            text-transform: uppercase;
+            font-weight: 300;
+        }
+
+        #montage-text.show {
+            opacity: 1;
+        }
+    </style>
+</head>
+<body>
+    <!-- Loading Screen -->
+    <div id="loading-screen">
+        <div class="loading-spinner"></div>
+        <div id="loading-text">INITIALIZING TERRAFORMER...</div>
+    </div>
+
+    <!-- Canvas Container -->
+    <div id="canvas-container"></div>
+
+    <!-- Text Overlay -->
+    <div id="text-overlay">
+        <div id="narrative-text"></div>
+    </div>
+
+    <!-- Fade Overlay -->
+    <div id="fade-overlay"></div>
+
+    <!-- Progress Bar -->
+    <div id="progress-bar"></div>
+
+    <!-- Fast Forward Button -->
+    <button id="fast-forward-btn" title="Fast Forward">⏩</button>
+
+    <!-- Controls -->
+    <div id="controls">
+        <button id="play-btn">▶ START TRANSFORMATION</button>
+        <button id="replay-btn" style="display: none;">↻ REPLAY</button>
+        <button id="orbit-btn" style="display: none;">🌍 EXPLORE</button>
+    </div>
+
+    <!-- Conference Room Scene -->
+    <div id="conference-room">
+        <div id="dialogue-box">
+            <div id="speaker-name">NASA OFFICIAL</div>
+            <div id="dialogue-text">Welcome to NASA...</div>
+        </div>
+    </div>
+
+    <!-- Training Montage -->
+    <div id="training-montage">
+        <div id="montage-text">SIX MONTHS LATER...</div>
+    </div>
+
+    <script type="importmap">
+    {
+        "imports": {
+            "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+            "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+        }
+    }
+    </script>
+
+    <!-- Load GSAP separately -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"></script>
+
+    <script type="module" src="./src/js/main.js"></script>
+</body>
+</html>
