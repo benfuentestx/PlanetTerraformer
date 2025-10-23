@@ -276,6 +276,44 @@ export class RocketScene {
         flamesGroup.visible = false;
         rocketGroup.add(flamesGroup);
         this.flames = flamesGroup;
+
+        // Add smoke particles
+        this.createSmokeParticles(rocketGroup);
+    }
+
+    createSmokeParticles(rocketGroup) {
+        const particleCount = 200;
+        const positions = new Float32Array(particleCount * 3);
+        const velocities = [];
+
+        for (let i = 0; i < particleCount; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 2;
+            positions[i * 3 + 1] = -2 + Math.random() * 2;
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 2;
+
+            velocities.push({
+                x: (Math.random() - 0.5) * 0.5,
+                y: -0.5 - Math.random() * 1,
+                z: (Math.random() - 0.5) * 0.5
+            });
+        }
+
+        const particleGeometry = new THREE.BufferGeometry();
+        particleGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        const particleMaterial = new THREE.PointsMaterial({
+            color: 0x888888,
+            size: 0.5,
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending
+        });
+
+        this.smokeParticles = new THREE.Points(particleGeometry, particleMaterial);
+        this.smokeParticles.userData.velocities = velocities;
+        this.smokeParticles.visible = false;
+        rocketGroup.add(this.smokeParticles);
+        this.rocketObjects.push(this.smokeParticles);
     }
 
     startCountdown() {
@@ -325,6 +363,9 @@ export class RocketScene {
         // Show rocket from exterior
         this.rocket.visible = true;
         this.flames.visible = true;
+        if (this.smokeParticles) {
+            this.smokeParticles.visible = true;
+        }
 
         // Position camera for exterior view
         this.camera.position.set(0, 0, -50);
@@ -336,6 +377,11 @@ export class RocketScene {
         // Show launch text
         textOverlay.textContent = 'LIFTOFF!';
         textOverlay.classList.add('show');
+
+        // Change scene background to Earth sky
+        if (this.scene.background) {
+            this.scene.background = new THREE.Color(0x4a90e2);
+        }
 
         // Animate rocket ascent
         const launchDuration = 8000;
@@ -349,7 +395,7 @@ export class RocketScene {
 
             if (progress >= 1) {
                 clearInterval(launchInterval);
-                this.transitionToCockpit();
+                this.transitionToSpace();
                 return;
             }
 
@@ -357,19 +403,73 @@ export class RocketScene {
             const easeProgress = 1 - Math.pow(1 - progress, 3);
             this.rocket.position.y = startY + (endY - startY) * easeProgress;
 
-            // Add camera shake
-            this.shakeIntensity = 0.5 * (1 - progress);
+            // Add camera shake (more intense at start)
+            this.shakeIntensity = 0.8 * (1 - progress * 0.5);
 
             // Animate flames
             this.flames.children.forEach((flame, index) => {
                 const scale = 1 + Math.sin(Date.now() * 0.01 + index) * 0.2;
                 flame.scale.y = scale;
             });
+
+            // Update smoke particles
+            if (this.smokeParticles && this.smokeParticles.visible) {
+                const positions = this.smokeParticles.geometry.attributes.position.array;
+                const velocities = this.smokeParticles.userData.velocities;
+
+                for (let i = 0; i < positions.length / 3; i++) {
+                    positions[i * 3] += velocities[i].x;
+                    positions[i * 3 + 1] += velocities[i].y;
+                    positions[i * 3 + 2] += velocities[i].z;
+
+                    // Reset particles that fall too far
+                    if (positions[i * 3 + 1] < -10) {
+                        positions[i * 3 + 1] = -2;
+                    }
+                }
+                this.smokeParticles.geometry.attributes.position.needsUpdate = true;
+            }
+
+            // Transition sky color from blue to dark as rocket ascends
+            if (this.scene.background && progress > 0.3) {
+                const skyProgress = (progress - 0.3) / 0.7;
+                const r = 0.29 * (1 - skyProgress);
+                const g = 0.56 * (1 - skyProgress);
+                const b = 0.88 * (1 - skyProgress);
+                this.scene.background.setRGB(r, g, b);
+            }
         }, 16);
 
         // Hide text after 3 seconds
         setTimeout(() => {
             textOverlay.classList.remove('show');
+        }, 3000);
+    }
+
+    transitionToSpace() {
+        console.log('🌌 Entering space...');
+
+        const textOverlay = document.getElementById('narrative-text');
+        const fadeOverlay = document.getElementById('fade-overlay');
+
+        // Show space transition text
+        textOverlay.textContent = 'Exiting Earth Atmosphere...';
+        textOverlay.classList.add('show');
+
+        // Complete transition to black space
+        if (this.scene.background) {
+            this.scene.background = new THREE.Color(0x000510);
+        }
+
+        // Hide smoke particles
+        if (this.smokeParticles) {
+            this.smokeParticles.visible = false;
+        }
+
+        // Continue to cockpit view after 3 seconds
+        setTimeout(() => {
+            textOverlay.classList.remove('show');
+            this.transitionToCockpit();
         }, 3000);
     }
 
@@ -407,24 +507,33 @@ export class RocketScene {
 
         const textOverlay = document.getElementById('narrative-text');
 
-        // Enable red alert light
+        // Enable red alert light (initially off)
         if (this.cockpitView.userData.alertLight) {
             this.cockpitView.userData.alertLight.intensity = 0;
         }
 
+        // Create atmospheric entry glow effect
+        this.createAtmosphericGlow();
+
         const dialogue = [
             { time: 1000, text: 'Mission Control: "You are now entering Terraform orbit."', duration: 4000 },
-            { time: 5000, text: 'Mission Control: "Beginning descent sequence."', duration: 4000 },
-            { time: 9000, text: 'Mission Control: "We\'re losing signal... [STATIC]"', duration: 4000 },
-            { time: 13000, text: 'SYSTEM ALERT: COMMUNICATION LOST', duration: 3000, alert: true },
-            { time: 16000, text: 'SYSTEM ALERT: EMERGENCY LANDING PROTOCOL', duration: 3000, alert: true },
-            { time: 19000, text: 'BRACE FOR IMPACT!', duration: 2000, alert: true }
+            { time: 5000, text: 'Mission Control: "Beginning descent sequence."', duration: 4000, effect: 'entry' },
+            { time: 9000, text: 'Mission Control: "Core stability readings... unstable."', duration: 4000 },
+            { time: 13000, text: 'Mission Control: "We\'re losing signal... [STATIC]"', duration: 4000 },
+            { time: 17000, text: 'SYSTEM ALERT: COMMUNICATION LOST', duration: 3000, alert: true },
+            { time: 20000, text: 'SYSTEM ALERT: EMERGENCY LANDING PROTOCOL', duration: 3000, alert: true },
+            { time: 23000, text: 'BRACE FOR IMPACT!', duration: 2000, alert: true }
         ];
 
         dialogue.forEach(step => {
             setTimeout(() => {
                 textOverlay.textContent = step.text;
                 textOverlay.classList.add('show');
+
+                if (step.effect === 'entry') {
+                    // Show atmospheric entry effects
+                    this.startAtmosphericEntry();
+                }
 
                 if (step.alert && this.cockpitView.userData.alertLight) {
                     this.cockpitView.userData.alertLight.intensity = 2;
@@ -440,7 +549,56 @@ export class RocketScene {
         // Start impact sequence
         setTimeout(() => {
             this.crashLanding();
-        }, 21000);
+        }, 25000);
+    }
+
+    createAtmosphericGlow() {
+        // Create orange atmospheric glow outside cockpit window
+        const glowGeometry = new THREE.SphereGeometry(1.2, 32, 32);
+        const glowMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff6600,
+            transparent: true,
+            opacity: 0,
+            side: THREE.BackSide
+        });
+        this.atmosphericGlow = new THREE.Mesh(glowGeometry, glowMaterial);
+        this.atmosphericGlow.position.set(0, 1.6, -2);
+
+        if (this.cockpitView) {
+            this.cockpitView.add(this.atmosphericGlow);
+            this.rocketObjects.push(this.atmosphericGlow);
+        }
+    }
+
+    startAtmosphericEntry() {
+        console.log('🔥 Atmospheric entry effects starting...');
+
+        // Animate atmospheric glow
+        if (this.atmosphericGlow) {
+            const startTime = Date.now();
+            const duration = 8000;
+
+            const glowInterval = setInterval(() => {
+                const elapsed = Date.now() - startTime;
+                const progress = elapsed / duration;
+
+                if (progress >= 1) {
+                    clearInterval(glowInterval);
+                    return;
+                }
+
+                // Intensify glow during entry
+                const intensity = Math.sin(progress * Math.PI) * 0.6;
+                this.atmosphericGlow.material.opacity = intensity;
+
+                // Add flickering effect
+                const flicker = Math.sin(Date.now() * 0.02) * 0.1;
+                this.atmosphericGlow.material.opacity += flicker;
+
+                // Slight shake during entry
+                this.shakeIntensity = 0.3 + Math.random() * 0.2;
+            }, 16);
+        }
     }
 
     crashLanding() {
@@ -482,12 +640,34 @@ export class RocketScene {
         console.log('🎮 Starting survival gameplay...');
 
         const fadeOverlay = document.getElementById('fade-overlay');
+        const textOverlay = document.getElementById('narrative-text');
 
-        // Clean up rocket scene
-        this.cleanup();
+        // Show objective text
+        setTimeout(() => {
+            textOverlay.textContent = 'OBJECTIVE: Scan atmospheric towers and assess core stability';
+            textOverlay.classList.add('show');
+
+            setTimeout(() => {
+                textOverlay.classList.remove('show');
+            }, 5000);
+        }, 3000);
+
+        // Create landing pad ground
+        this.createLandingPad();
+
+        // Clean up cockpit view, keep landing environment
+        if (this.cockpitView) {
+            this.cockpitView.visible = false;
+        }
+
+        // Position camera behind crashed ship
+        this.camera.position.set(0, 2, 10);
+        this.camera.lookAt(0, 1, 0);
 
         // Fade from black to gameplay
-        fadeOverlay.classList.add('transparent');
+        setTimeout(() => {
+            fadeOverlay.classList.add('transparent');
+        }, 1000);
 
         // Show controls container and start game button
         const controls = document.getElementById('controls');
@@ -503,7 +683,12 @@ export class RocketScene {
             // Add click handler
             startBtn.addEventListener('click', () => {
                 console.log('🎮 Survival gameplay will begin...');
-                alert('Survival gameplay coming soon! You are now stranded on Planet Terraform.');
+                textOverlay.textContent = 'SURVIVAL MODE COMING SOON!\n\nYou are stranded on Planet Terraform.\nExplore the terraformed world and survive.';
+                textOverlay.classList.add('show');
+
+                setTimeout(() => {
+                    textOverlay.classList.remove('show');
+                }, 6000);
             });
         }
 
@@ -515,6 +700,72 @@ export class RocketScene {
         this.isActive = false;
 
         console.log('✅ Rocket sequence complete - Ready for gameplay!');
+    }
+
+    createLandingPad() {
+        // Create a simple landing area
+        const groundGeometry = new THREE.PlaneGeometry(50, 50);
+        const groundMaterial = new THREE.MeshStandardMaterial({
+            color: 0x8b4513,
+            roughness: 0.9,
+            metalness: 0.1
+        });
+        const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+        ground.rotation.x = -Math.PI / 2;
+        ground.position.y = 0;
+        ground.receiveShadow = true;
+        this.scene.add(ground);
+        this.rocketObjects.push(ground);
+
+        // Add crashed rocket in distance
+        const crashedRocket = new THREE.Group();
+        const bodyGeometry = new THREE.CylinderGeometry(0.5, 0.5, 5, 16);
+        const bodyMaterial = new THREE.MeshStandardMaterial({
+            color: 0xcccccc,
+            roughness: 0.7,
+            metalness: 0.3
+        });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.rotation.z = Math.PI / 6; // Tilted
+        body.position.y = 1;
+        crashedRocket.add(body);
+
+        crashedRocket.position.set(-5, 0, -3);
+        this.scene.add(crashedRocket);
+        this.rocketObjects.push(crashedRocket);
+
+        // Add dust particles settling
+        this.createDustParticles();
+
+        // Restore planet if it exists
+        if (this.mainApp && this.mainApp.planet) {
+            this.mainApp.planet.mesh.visible = false; // Hide during landing scene
+        }
+    }
+
+    createDustParticles() {
+        const particleCount = 100;
+        const positions = new Float32Array(particleCount * 3);
+
+        for (let i = 0; i < particleCount; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 20;
+            positions[i * 3 + 1] = Math.random() * 3;
+            positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+        }
+
+        const dustGeometry = new THREE.BufferGeometry();
+        dustGeometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        const dustMaterial = new THREE.PointsMaterial({
+            color: 0xccaa88,
+            size: 0.3,
+            transparent: true,
+            opacity: 0.5
+        });
+
+        this.dustParticles = new THREE.Points(dustGeometry, dustMaterial);
+        this.scene.add(this.dustParticles);
+        this.rocketObjects.push(this.dustParticles);
     }
 
     update(deltaTime) {
