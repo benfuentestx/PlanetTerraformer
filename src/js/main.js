@@ -9,6 +9,7 @@ import { Animation } from './animation.js';
 import { UI } from './ui.js';
 import { AudioSystem } from './audio.js';
 import { ConferenceScene } from './conferenceScene.js';
+import { RocketScene } from './rocketScene.js';
 
 class PlanetTerraformer {
     constructor() {
@@ -16,7 +17,7 @@ class PlanetTerraformer {
         this.clock = new THREE.Clock();
         this.isPlaying = false;
         this.orbitEnabled = false;
-        this.currentScene = 'loading'; // loading, cinematic, conference, training, gameplay
+        this.currentScene = 'loading'; // loading, cinematic, conference, training, rocket, gameplay
 
         console.log('🌍 Planet Terraformer initializing...');
 
@@ -35,6 +36,7 @@ class PlanetTerraformer {
         this.planet = new Planet(this.scene);
         this.audioSystem = new AudioSystem();
         this.conferenceScene = new ConferenceScene(this.scene, this.camera, this.renderer, this);
+        this.rocketScene = new RocketScene(this.scene, this.camera, this.renderer, this);
         this.animation = new Animation(this.camera, this.planet, this.audioSystem, this.conferenceScene);
         this.ui = new UI(this.animation);
 
@@ -231,10 +233,19 @@ class PlanetTerraformer {
                 break;
 
             case 'training':
-                // Skip training, go to gameplay
-                console.log('⏩ Skipping training, going to gameplay');
+                // Skip training, go to rocket launch
+                console.log('⏩ Skipping training, going to rocket launch');
                 if (this.conferenceScene) {
                     this.conferenceScene.skipToGameplay();
+                }
+                this.currentScene = 'rocket';
+                break;
+
+            case 'rocket':
+                // Skip rocket, go to gameplay
+                console.log('⏩ Skipping rocket launch, going to gameplay');
+                if (this.rocketScene) {
+                    this.rocketScene.skipToGameplay();
                 }
                 this.currentScene = 'gameplay';
                 break;
@@ -309,6 +320,11 @@ class PlanetTerraformer {
         // Update conference scene if active
         if (this.conferenceScene) {
             this.conferenceScene.update(deltaTime);
+        }
+
+        // Update rocket scene if active
+        if (this.rocketScene) {
+            this.rocketScene.update(deltaTime);
         }
 
         // Update controls if in orbit mode

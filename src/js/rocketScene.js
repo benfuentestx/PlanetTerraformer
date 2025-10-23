@@ -1,0 +1,585 @@
+import * as THREE from 'three';
+
+export class RocketScene {
+    constructor(scene, camera, renderer, mainApp) {
+        this.scene = scene;
+        this.camera = camera;
+        this.renderer = renderer;
+        this.mainApp = mainApp;
+
+        this.rocketObjects = [];
+        this.isActive = false;
+        this.cockpitView = null;
+        this.rocket = null;
+        this.flames = null;
+        this.dialogue = null;
+        this.shakeIntensity = 0;
+
+        console.log('🚀 Rocket scene initialized');
+    }
+
+    start() {
+        console.log('🚀 Starting rocket launch sequence...');
+        this.isActive = true;
+
+        // Clean up previous scene objects
+        this.cleanup();
+
+        // Setup rocket interior (cockpit)
+        this.setupCockpit();
+
+        // Setup rocket exterior (for launch view)
+        this.setupRocket();
+
+        // Hide training montage
+        const trainingMontage = document.getElementById('training-montage');
+        trainingMontage.style.display = 'none';
+
+        // Show countdown sequence
+        this.startCountdown();
+    }
+
+    setupCockpit() {
+        // Cockpit interior - first person view from pilot seat
+        const cockpitGroup = new THREE.Group();
+
+        // Control panel
+        const panelGeometry = new THREE.BoxGeometry(3, 0.8, 0.1);
+        const panelMaterial = new THREE.MeshStandardMaterial({
+            color: 0x2a2a2a,
+            roughness: 0.3,
+            metalness: 0.7
+        });
+        const panel = new THREE.Mesh(panelGeometry, panelMaterial);
+        panel.position.set(0, 1.2, -1.5);
+        panel.rotation.x = -0.3;
+        cockpitGroup.add(panel);
+        this.rocketObjects.push(panel);
+
+        // Screens on panel (3 monitors)
+        for (let i = 0; i < 3; i++) {
+            const screenGeometry = new THREE.PlaneGeometry(0.6, 0.4);
+            const screenMaterial = new THREE.MeshBasicMaterial({
+                color: 0x00ff88,
+                emissive: 0x00ff88,
+                emissiveIntensity: 0.5
+            });
+            const screen = new THREE.Mesh(screenGeometry, screenMaterial);
+            screen.position.set(-0.8 + i * 0.8, 1.3, -1.4);
+            screen.rotation.x = -0.3;
+            cockpitGroup.add(screen);
+            this.rocketObjects.push(screen);
+
+            // Make screens flicker with data
+            screen.userData.flickerSpeed = 2 + Math.random() * 2;
+        }
+
+        // Buttons and switches (random colored indicators)
+        for (let i = 0; i < 15; i++) {
+            const buttonGeometry = new THREE.SphereGeometry(0.03, 8, 8);
+            const colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff8800];
+            const buttonMaterial = new THREE.MeshBasicMaterial({
+                color: colors[Math.floor(Math.random() * colors.length)],
+                emissive: colors[Math.floor(Math.random() * colors.length)],
+                emissiveIntensity: 0.8
+            });
+            const button = new THREE.Mesh(buttonGeometry, buttonMaterial);
+            button.position.set(
+                -1.2 + Math.random() * 2.4,
+                1.0 + Math.random() * 0.3,
+                -1.4
+            );
+            cockpitGroup.add(button);
+            this.rocketObjects.push(button);
+        }
+
+        // Window frame (looking out to space)
+        const windowFrameGeometry = new THREE.RingGeometry(0.8, 0.9, 32);
+        const windowFrameMaterial = new THREE.MeshStandardMaterial({
+            color: 0x555555,
+            roughness: 0.4,
+            metalness: 0.8
+        });
+        const windowFrame = new THREE.Mesh(windowFrameGeometry, windowFrameMaterial);
+        windowFrame.position.set(0, 1.6, -2);
+        cockpitGroup.add(windowFrame);
+        this.rocketObjects.push(windowFrame);
+
+        // Cockpit walls (curved interior)
+        const wallCurve = new THREE.Shape();
+        wallCurve.absarc(0, 0, 2, 0, Math.PI, false);
+        wallCurve.lineTo(-2, -0.5);
+        wallCurve.lineTo(2, -0.5);
+
+        const extrudeSettings = {
+            depth: 0.1,
+            bevelEnabled: false
+        };
+
+        const wallGeometry = new THREE.ExtrudeGeometry(wallCurve, extrudeSettings);
+        const wallMaterial = new THREE.MeshStandardMaterial({
+            color: 0x3a3a3a,
+            roughness: 0.8,
+            side: THREE.DoubleSide
+        });
+        const walls = new THREE.Mesh(wallGeometry, wallMaterial);
+        walls.position.set(0, 1.5, -2);
+        walls.rotation.y = Math.PI;
+        cockpitGroup.add(walls);
+        this.rocketObjects.push(walls);
+
+        // Pilot seat (behind camera)
+        const seatGeometry = new THREE.BoxGeometry(0.8, 0.3, 0.8);
+        const seatMaterial = new THREE.MeshStandardMaterial({
+            color: 0x1a1a1a,
+            roughness: 0.6
+        });
+        const seat = new THREE.Mesh(seatGeometry, seatMaterial);
+        seat.position.set(0, 0.8, 0.5);
+        cockpitGroup.add(seat);
+        this.rocketObjects.push(seat);
+
+        // Add cockpit lighting
+        const cockpitLight = new THREE.PointLight(0x00ff88, 1, 10);
+        cockpitLight.position.set(0, 2, -1);
+        cockpitGroup.add(cockpitLight);
+        this.rocketObjects.push(cockpitLight);
+
+        // Add red alert light
+        const alertLight = new THREE.PointLight(0xff0000, 0, 10);
+        alertLight.position.set(0, 2.2, 0);
+        cockpitGroup.add(alertLight);
+        this.rocketObjects.push(alertLight);
+
+        // Store alert light for animation
+        cockpitGroup.userData.alertLight = alertLight;
+
+        this.scene.add(cockpitGroup);
+        this.cockpitView = cockpitGroup;
+        this.rocketObjects.push(cockpitGroup);
+
+        // Position camera in cockpit
+        this.camera.position.set(0, 1.5, 0);
+        this.camera.lookAt(0, 1.5, -2);
+
+        // Make cockpit invisible initially (will fade in)
+        cockpitGroup.visible = false;
+    }
+
+    setupRocket() {
+        // External rocket model (for exterior shots)
+        const rocketGroup = new THREE.Group();
+
+        // Main body (cylinder)
+        const bodyGeometry = new THREE.CylinderGeometry(1, 1, 10, 32);
+        const bodyMaterial = new THREE.MeshStandardMaterial({
+            color: 0xeeeeee,
+            roughness: 0.2,
+            metalness: 0.8
+        });
+        const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+        body.position.y = 5;
+        rocketGroup.add(body);
+
+        // Nose cone
+        const noseGeometry = new THREE.ConeGeometry(1, 3, 32);
+        const nose = new THREE.Mesh(noseGeometry, bodyMaterial);
+        nose.position.y = 11.5;
+        rocketGroup.add(nose);
+
+        // NASA logo on side
+        const logoGeometry = new THREE.CircleGeometry(0.6, 32);
+        const logoMaterial = new THREE.MeshBasicMaterial({
+            color: 0x0b3d91,
+            side: THREE.DoubleSide
+        });
+        const logo = new THREE.Mesh(logoGeometry, logoMaterial);
+        logo.position.set(1.05, 6, 0);
+        logo.rotation.y = Math.PI / 2;
+        rocketGroup.add(logo);
+
+        // Red stripes
+        for (let i = 0; i < 3; i++) {
+            const stripeGeometry = new THREE.CylinderGeometry(1.02, 1.02, 0.3, 32);
+            const stripeMaterial = new THREE.MeshStandardMaterial({
+                color: 0xff0000,
+                roughness: 0.2,
+                metalness: 0.7
+            });
+            const stripe = new THREE.Mesh(stripeGeometry, stripeMaterial);
+            stripe.position.y = 3 + i * 2;
+            rocketGroup.add(stripe);
+        }
+
+        // Engine bells (4 at bottom)
+        for (let i = 0; i < 4; i++) {
+            const angle = (i / 4) * Math.PI * 2;
+            const x = Math.cos(angle) * 0.6;
+            const z = Math.sin(angle) * 0.6;
+
+            const engineGeometry = new THREE.CylinderGeometry(0.3, 0.4, 1.5, 16);
+            const engineMaterial = new THREE.MeshStandardMaterial({
+                color: 0x333333,
+                roughness: 0.6,
+                metalness: 0.9
+            });
+            const engine = new THREE.Mesh(engineGeometry, engineMaterial);
+            engine.position.set(x, 0.25, z);
+            rocketGroup.add(engine);
+        }
+
+        // Rocket flames (initially hidden)
+        this.createFlames(rocketGroup);
+
+        // Position rocket far away for launch view
+        rocketGroup.position.set(0, -30, -100);
+        rocketGroup.visible = false;
+
+        this.scene.add(rocketGroup);
+        this.rocket = rocketGroup;
+        this.rocketObjects.push(rocketGroup);
+    }
+
+    createFlames(rocketGroup) {
+        const flamesGroup = new THREE.Group();
+
+        // Main exhaust flame
+        for (let i = 0; i < 4; i++) {
+            const angle = (i / 4) * Math.PI * 2;
+            const x = Math.cos(angle) * 0.6;
+            const z = Math.sin(angle) * 0.6;
+
+            const flameGeometry = new THREE.ConeGeometry(0.35, 3, 8);
+            const flameMaterial = new THREE.MeshBasicMaterial({
+                color: 0xff6600,
+                transparent: true,
+                opacity: 0.8
+            });
+            const flame = new THREE.Mesh(flameGeometry, flameMaterial);
+            flame.position.set(x, -1, z);
+            flame.rotation.x = Math.PI;
+            flamesGroup.add(flame);
+
+            // Inner core (brighter)
+            const coreGeometry = new THREE.ConeGeometry(0.2, 2, 8);
+            const coreMaterial = new THREE.MeshBasicMaterial({
+                color: 0xffff00,
+                transparent: true,
+                opacity: 0.9
+            });
+            const core = new THREE.Mesh(coreGeometry, coreMaterial);
+            core.position.set(x, -0.5, z);
+            core.rotation.x = Math.PI;
+            flamesGroup.add(core);
+        }
+
+        flamesGroup.visible = false;
+        rocketGroup.add(flamesGroup);
+        this.flames = flamesGroup;
+    }
+
+    startCountdown() {
+        console.log('⏰ Countdown sequence starting...');
+
+        const textOverlay = document.getElementById('narrative-text');
+        const fadeOverlay = document.getElementById('fade-overlay');
+
+        // Fade to black first
+        fadeOverlay.style.opacity = '1';
+        fadeOverlay.classList.remove('transparent');
+
+        const countdown = [
+            { time: 1000, text: 'MISSION: TERRAFORM EXPLORATION', duration: 3000 },
+            { time: 4000, text: 'DESTINATION: PLANET TERRAFORM', duration: 3000 },
+            { time: 7000, text: 'LAUNCH SEQUENCE INITIATED', duration: 3000 },
+            { time: 10000, text: 'T-MINUS 10 SECONDS', duration: 2000 },
+            { time: 12000, text: '10... 9... 8...', duration: 1000 },
+            { time: 13000, text: '7... 6... 5...', duration: 1000 },
+            { time: 14000, text: '4... 3... 2...', duration: 1000 },
+            { time: 15000, text: '1... IGNITION!', duration: 1000 }
+        ];
+
+        countdown.forEach(step => {
+            setTimeout(() => {
+                textOverlay.textContent = step.text;
+                textOverlay.classList.add('show');
+
+                setTimeout(() => {
+                    textOverlay.classList.remove('show');
+                }, step.duration);
+            }, step.time);
+        });
+
+        // Start launch at T+16 seconds
+        setTimeout(() => {
+            this.startLaunch();
+        }, 16000);
+    }
+
+    startLaunch() {
+        console.log('🚀 LIFTOFF!');
+
+        const textOverlay = document.getElementById('narrative-text');
+        const fadeOverlay = document.getElementById('fade-overlay');
+
+        // Show rocket from exterior
+        this.rocket.visible = true;
+        this.flames.visible = true;
+
+        // Position camera for exterior view
+        this.camera.position.set(0, 0, -50);
+        this.camera.lookAt(0, 0, -100);
+
+        // Fade from black to show launch
+        fadeOverlay.classList.add('transparent');
+
+        // Show launch text
+        textOverlay.textContent = 'LIFTOFF!';
+        textOverlay.classList.add('show');
+
+        // Animate rocket ascent
+        const launchDuration = 8000;
+        const startY = -30;
+        const endY = 100;
+        const startTime = Date.now();
+
+        const launchInterval = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            const progress = elapsed / launchDuration;
+
+            if (progress >= 1) {
+                clearInterval(launchInterval);
+                this.transitionToCockpit();
+                return;
+            }
+
+            // Ease out cubic
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            this.rocket.position.y = startY + (endY - startY) * easeProgress;
+
+            // Add camera shake
+            this.shakeIntensity = 0.5 * (1 - progress);
+
+            // Animate flames
+            this.flames.children.forEach((flame, index) => {
+                const scale = 1 + Math.sin(Date.now() * 0.01 + index) * 0.2;
+                flame.scale.y = scale;
+            });
+        }, 16);
+
+        // Hide text after 3 seconds
+        setTimeout(() => {
+            textOverlay.classList.remove('show');
+        }, 3000);
+    }
+
+    transitionToCockpit() {
+        console.log('🏢 Transitioning to cockpit view...');
+
+        const fadeOverlay = document.getElementById('fade-overlay');
+        const textOverlay = document.getElementById('narrative-text');
+
+        // Fade to black
+        fadeOverlay.classList.remove('transparent');
+
+        setTimeout(() => {
+            // Hide rocket exterior
+            this.rocket.visible = false;
+
+            // Show cockpit interior
+            this.cockpitView.visible = true;
+
+            // Reset camera to cockpit view
+            this.camera.position.set(0, 1.5, 0);
+            this.camera.lookAt(0, 1.5, -2);
+
+            // Fade from black
+            fadeOverlay.classList.add('transparent');
+
+            // Show mission control dialogue
+            this.startMissionDialogue();
+
+        }, 2000);
+    }
+
+    startMissionDialogue() {
+        console.log('📡 Mission control communication...');
+
+        const textOverlay = document.getElementById('narrative-text');
+
+        // Enable red alert light
+        if (this.cockpitView.userData.alertLight) {
+            this.cockpitView.userData.alertLight.intensity = 0;
+        }
+
+        const dialogue = [
+            { time: 1000, text: 'Mission Control: "You are now entering Terraform orbit."', duration: 4000 },
+            { time: 5000, text: 'Mission Control: "Beginning descent sequence."', duration: 4000 },
+            { time: 9000, text: 'Mission Control: "We\'re losing signal... [STATIC]"', duration: 4000 },
+            { time: 13000, text: 'SYSTEM ALERT: COMMUNICATION LOST', duration: 3000, alert: true },
+            { time: 16000, text: 'SYSTEM ALERT: EMERGENCY LANDING PROTOCOL', duration: 3000, alert: true },
+            { time: 19000, text: 'BRACE FOR IMPACT!', duration: 2000, alert: true }
+        ];
+
+        dialogue.forEach(step => {
+            setTimeout(() => {
+                textOverlay.textContent = step.text;
+                textOverlay.classList.add('show');
+
+                if (step.alert && this.cockpitView.userData.alertLight) {
+                    this.cockpitView.userData.alertLight.intensity = 2;
+                    this.shakeIntensity = 0.8;
+                }
+
+                setTimeout(() => {
+                    textOverlay.classList.remove('show');
+                }, step.duration);
+            }, step.time);
+        });
+
+        // Start impact sequence
+        setTimeout(() => {
+            this.crashLanding();
+        }, 21000);
+    }
+
+    crashLanding() {
+        console.log('💥 CRASH LANDING!');
+
+        const fadeOverlay = document.getElementById('fade-overlay');
+        const textOverlay = document.getElementById('narrative-text');
+
+        // Maximum shake
+        this.shakeIntensity = 2;
+
+        // Flash screen white
+        fadeOverlay.style.background = '#ffffff';
+        fadeOverlay.classList.remove('transparent');
+
+        setTimeout(() => {
+            // Fade to black
+            fadeOverlay.style.background = '#000000';
+            this.shakeIntensity = 0;
+
+            // Show stranded text
+            setTimeout(() => {
+                textOverlay.textContent = 'LOCATION: PLANET TERRAFORM\nSTATUS: STRANDED';
+                textOverlay.classList.add('show');
+
+                setTimeout(() => {
+                    textOverlay.classList.remove('show');
+
+                    // Transition to gameplay
+                    setTimeout(() => {
+                        this.transitionToGameplay();
+                    }, 2000);
+                }, 4000);
+            }, 2000);
+        }, 500);
+    }
+
+    transitionToGameplay() {
+        console.log('🎮 Starting survival gameplay...');
+
+        const fadeOverlay = document.getElementById('fade-overlay');
+
+        // Clean up rocket scene
+        this.cleanup();
+
+        // Fade from black to gameplay
+        fadeOverlay.classList.add('transparent');
+
+        // Show controls container and start game button
+        const controls = document.getElementById('controls');
+        const startBtn = document.getElementById('start-game-btn');
+
+        if (controls) {
+            controls.classList.add('show');
+        }
+
+        if (startBtn) {
+            startBtn.style.display = 'block';
+
+            // Add click handler
+            startBtn.addEventListener('click', () => {
+                console.log('🎮 Survival gameplay will begin...');
+                alert('Survival gameplay coming soon! You are now stranded on Planet Terraform.');
+            });
+        }
+
+        // Update scene state
+        if (this.mainApp) {
+            this.mainApp.currentScene = 'gameplay';
+        }
+
+        this.isActive = false;
+
+        console.log('✅ Rocket sequence complete - Ready for gameplay!');
+    }
+
+    update(deltaTime) {
+        if (!this.isActive) return;
+
+        // Camera shake effect
+        if (this.shakeIntensity > 0) {
+            this.camera.position.x += (Math.random() - 0.5) * this.shakeIntensity * 0.1;
+            this.camera.position.y += (Math.random() - 0.5) * this.shakeIntensity * 0.1;
+
+            // Decay shake
+            this.shakeIntensity *= 0.95;
+        }
+
+        // Flicker screens in cockpit
+        if (this.cockpitView && this.cockpitView.visible) {
+            this.cockpitView.children.forEach(child => {
+                if (child.userData.flickerSpeed) {
+                    const flicker = Math.sin(Date.now() * 0.001 * child.userData.flickerSpeed) * 0.5 + 0.5;
+                    child.material.emissiveIntensity = 0.3 + flicker * 0.4;
+                }
+            });
+        }
+
+        // Animate alert light
+        if (this.cockpitView && this.cockpitView.userData.alertLight) {
+            const light = this.cockpitView.userData.alertLight;
+            if (light.intensity > 0) {
+                light.intensity = Math.sin(Date.now() * 0.01) * 1 + 1;
+            }
+        }
+    }
+
+    skipToGameplay() {
+        console.log('⏩ Skipping rocket sequence to gameplay');
+
+        // Clear all timeouts
+        const highestId = setTimeout(() => {});
+        for (let i = 0; i < highestId; i++) {
+            clearTimeout(i);
+        }
+
+        // Go straight to gameplay
+        this.transitionToGameplay();
+    }
+
+    cleanup() {
+        // Remove all rocket scene objects
+        this.rocketObjects.forEach(obj => {
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) {
+                if (Array.isArray(obj.material)) {
+                    obj.material.forEach(mat => mat.dispose());
+                } else {
+                    obj.material.dispose();
+                }
+            }
+            if (obj.parent) {
+                obj.parent.remove(obj);
+            }
+        });
+
+        this.rocketObjects = [];
+        this.cockpitView = null;
+        this.rocket = null;
+        this.flames = null;
+    }
+}

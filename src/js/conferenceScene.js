@@ -663,19 +663,13 @@ export class ConferenceScene {
     }
 
     startGameplay() {
-        // This will trigger the actual survival game
-        console.log('🎮 GAMEPLAY STARTS HERE');
-        if (this.mainApp) this.mainApp.currentScene = 'gameplay';
-
-        // Show temporary message
-        const controls = document.getElementById('controls');
-        controls.innerHTML = '<button id="start-game-btn">🚀 BEGIN MISSION</button>';
-        controls.classList.add('show');
-
-        document.getElementById('start-game-btn').addEventListener('click', () => {
-            console.log('🎮 Starting survival gameplay...');
-            alert('Survival gameplay will begin here! (Coming soon)');
-        });
+        // Transition to rocket launch scene
+        console.log('🚀 Transitioning to rocket launch...');
+        if (this.mainApp && this.mainApp.rocketScene) {
+            this.mainApp.rocketScene.start();
+        } else {
+            console.error('❌ Rocket scene not initialized');
+        }
     }
 
     update(deltaTime) {
