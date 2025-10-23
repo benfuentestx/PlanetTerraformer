@@ -181,16 +181,39 @@ export class ConferenceScene {
         this.scene.add(this.table);
         this.roomObjects.push(this.table);
 
-        // Wall behind
-        const wallGeometry = new THREE.PlaneGeometry(20, 8);
+        // WALLS - Complete enclosed room
         const wallMaterial = new THREE.MeshStandardMaterial({
             color: 0xc9a961,
-            roughness: 0.9
+            roughness: 0.9,
+            side: THREE.DoubleSide
         });
-        const wall = new THREE.Mesh(wallGeometry, wallMaterial);
-        wall.position.set(0, 4, -8);
-        this.scene.add(wall);
-        this.roomObjects.push(wall);
+
+        // Back wall (behind NASA logo)
+        const backWall = new THREE.Mesh(new THREE.PlaneGeometry(20, 10), wallMaterial);
+        backWall.position.set(0, 5, -8);
+        this.scene.add(backWall);
+        this.roomObjects.push(backWall);
+
+        // Left wall
+        const leftWall = new THREE.Mesh(new THREE.PlaneGeometry(16, 10), wallMaterial);
+        leftWall.position.set(-10, 5, 0);
+        leftWall.rotation.y = Math.PI / 2;
+        this.scene.add(leftWall);
+        this.roomObjects.push(leftWall);
+
+        // Right wall
+        const rightWall = new THREE.Mesh(new THREE.PlaneGeometry(16, 10), wallMaterial);
+        rightWall.position.set(10, 5, 0);
+        rightWall.rotation.y = -Math.PI / 2;
+        this.scene.add(rightWall);
+        this.roomObjects.push(rightWall);
+
+        // Ceiling
+        const ceiling = new THREE.Mesh(new THREE.PlaneGeometry(20, 16), wallMaterial);
+        ceiling.position.set(0, 10, 0);
+        ceiling.rotation.x = Math.PI / 2;
+        this.scene.add(ceiling);
+        this.roomObjects.push(ceiling);
 
         // NASA Logo (circular disc on wall)
         const logoGeometry = new THREE.CircleGeometry(1.2, 64);
@@ -327,10 +350,9 @@ export class ConferenceScene {
         // Head
         const headGeometry = new THREE.SphereGeometry(0.22, 16, 16);
         const skinTone = [0xffdbac, 0xf1c27d, 0xe0ac69, 0xc68642, 0x8d5524][index % 5];
-        const headMaterial = new THREE.MeshStandardMaterial({
+        const headMaterial = new THREE.MeshLambertMaterial({
             color: skinTone,
-            roughness: 1.0,  // No shininess
-            metalness: 0.0   // Not metallic
+            // MeshLambertMaterial doesn't have specular highlights - no shine!
         });
         const head = new THREE.Mesh(headGeometry, headMaterial);
         head.position.y = 1.55;
@@ -447,8 +469,13 @@ export class ConferenceScene {
             group: group,
             head: head,
             mouth: mouth,
+            body: body,
+            leftArm: leftArm,
+            rightArm: rightArm,
             name: name,
-            isTalking: false
+            isTalking: false,
+            idleAnimation: null,
+            gestureAnimation: null
         };
     }
 
