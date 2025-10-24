@@ -209,61 +209,65 @@ export class RocketScene {
             rocketGroup.add(stripe);
         }
 
-        // Main body (cylinder)
-        const bodyGeometry = new THREE.CylinderGeometry(1, 1, 10, 32);
+        // Main body (cylinder) - BIGGER for visibility
+        const bodyGeometry = new THREE.CylinderGeometry(2, 2, 20, 32);
         const bodyMaterial = new THREE.MeshStandardMaterial({
             color: 0xeeeeee,
             roughness: 0.2,
-            metalness: 0.8
+            metalness: 0.8,
+            emissive: 0x222222, // Slight glow to ensure visibility
+            emissiveIntensity: 0.2
         });
         const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
-        body.position.y = 5;
+        body.position.y = 10;
         rocketGroup.add(body);
 
+        console.log('🚀 Creating rocket body at Y=10');
+
         // Nose cone
-        const noseGeometry = new THREE.ConeGeometry(1, 3, 32);
+        const noseGeometry = new THREE.ConeGeometry(2, 6, 32);
         const nose = new THREE.Mesh(noseGeometry, bodyMaterial);
-        nose.position.y = 11.5;
+        nose.position.y = 23;
         rocketGroup.add(nose);
 
-        // NASA logo on side
-        const logoGeometry = new THREE.CircleGeometry(0.6, 32);
+        // NASA logo on side - BIGGER
+        const logoGeometry = new THREE.CircleGeometry(1.2, 32);
         const logoMaterial = new THREE.MeshBasicMaterial({
             color: 0x0b3d91,
             side: THREE.DoubleSide
         });
         const logo = new THREE.Mesh(logoGeometry, logoMaterial);
-        logo.position.set(1.05, 6, 0);
+        logo.position.set(2.1, 12, 0);
         logo.rotation.y = Math.PI / 2;
         rocketGroup.add(logo);
 
-        // Red stripes
+        // Red stripes - BIGGER
         for (let i = 0; i < 3; i++) {
-            const stripeGeometry = new THREE.CylinderGeometry(1.02, 1.02, 0.3, 32);
+            const stripeGeometry = new THREE.CylinderGeometry(2.05, 2.05, 0.6, 32);
             const stripeMaterial = new THREE.MeshStandardMaterial({
                 color: 0xff0000,
                 roughness: 0.2,
                 metalness: 0.7
             });
             const stripe = new THREE.Mesh(stripeGeometry, stripeMaterial);
-            stripe.position.y = 3 + i * 2;
+            stripe.position.y = 6 + i * 4;
             rocketGroup.add(stripe);
         }
 
-        // Engine bells (4 at bottom)
+        // Engine bells (4 at bottom) - BIGGER
         for (let i = 0; i < 4; i++) {
             const angle = (i / 4) * Math.PI * 2;
-            const x = Math.cos(angle) * 0.6;
-            const z = Math.sin(angle) * 0.6;
+            const x = Math.cos(angle) * 1.2;
+            const z = Math.sin(angle) * 1.2;
 
-            const engineGeometry = new THREE.CylinderGeometry(0.3, 0.4, 1.5, 16);
+            const engineGeometry = new THREE.CylinderGeometry(0.6, 0.8, 3, 16);
             const engineMaterial = new THREE.MeshStandardMaterial({
                 color: 0x333333,
                 roughness: 0.6,
                 metalness: 0.9
             });
             const engine = new THREE.Mesh(engineGeometry, engineMaterial);
-            engine.position.set(x, 0.25, z);
+            engine.position.set(x, 0.5, z);
             rocketGroup.add(engine);
         }
 
@@ -282,32 +286,32 @@ export class RocketScene {
     createFlames(rocketGroup) {
         const flamesGroup = new THREE.Group();
 
-        // Main exhaust flame
+        // Main exhaust flame - BIGGER and BRIGHTER
         for (let i = 0; i < 4; i++) {
             const angle = (i / 4) * Math.PI * 2;
-            const x = Math.cos(angle) * 0.6;
-            const z = Math.sin(angle) * 0.6;
+            const x = Math.cos(angle) * 1.2;
+            const z = Math.sin(angle) * 1.2;
 
-            const flameGeometry = new THREE.ConeGeometry(0.35, 3, 8);
+            const flameGeometry = new THREE.ConeGeometry(0.7, 6, 8);
             const flameMaterial = new THREE.MeshBasicMaterial({
                 color: 0xff6600,
                 transparent: true,
-                opacity: 0.8
+                opacity: 0.9
             });
             const flame = new THREE.Mesh(flameGeometry, flameMaterial);
-            flame.position.set(x, -1, z);
+            flame.position.set(x, -2, z);
             flame.rotation.x = Math.PI;
             flamesGroup.add(flame);
 
-            // Inner core (brighter)
-            const coreGeometry = new THREE.ConeGeometry(0.2, 2, 8);
+            // Inner core (brighter) - BIGGER
+            const coreGeometry = new THREE.ConeGeometry(0.4, 4, 8);
             const coreMaterial = new THREE.MeshBasicMaterial({
                 color: 0xffff00,
                 transparent: true,
-                opacity: 0.9
+                opacity: 1.0
             });
             const core = new THREE.Mesh(coreGeometry, coreMaterial);
-            core.position.set(x, -0.5, z);
+            core.position.set(x, -1, z);
             core.rotation.x = Math.PI;
             flamesGroup.add(core);
         }
@@ -315,6 +319,8 @@ export class RocketScene {
         flamesGroup.visible = false;
         rocketGroup.add(flamesGroup);
         this.flames = flamesGroup;
+
+        console.log('🔥 Flames created for rocket');
 
         // Add smoke particles
         this.createSmokeParticles(rocketGroup);
@@ -493,6 +499,34 @@ export class RocketScene {
         const textOverlay = document.getElementById('narrative-text');
         const fadeOverlay = document.getElementById('fade-overlay');
 
+        // Clean up previous scene completely
+        console.log('🧹 Cleaning up previous scene...');
+
+        // Hide conference room
+        const conferenceRoom = document.getElementById('conference-room');
+        if (conferenceRoom) {
+            conferenceRoom.style.display = 'none';
+        }
+
+        // Remove all objects except stars and basic lights
+        const objectsToRemove = [];
+        this.scene.traverse((object) => {
+            if (object.userData && object.userData.isConferenceObject) {
+                objectsToRemove.push(object);
+            }
+        });
+        objectsToRemove.forEach(obj => {
+            if (obj.parent) obj.parent.remove(obj);
+            if (obj.geometry) obj.geometry.dispose();
+            if (obj.material) {
+                if (Array.isArray(obj.material)) {
+                    obj.material.forEach(mat => mat.dispose());
+                } else {
+                    obj.material.dispose();
+                }
+            }
+        });
+
         // Fade to black first
         fadeOverlay.style.opacity = '1';
         fadeOverlay.classList.remove('transparent');
@@ -531,27 +565,48 @@ export class RocketScene {
         const textOverlay = document.getElementById('narrative-text');
         const fadeOverlay = document.getElementById('fade-overlay');
 
+        // Change scene background to Earth sky FIRST (before fading in)
+        this.scene.background = new THREE.Color(0x87CEEB); // Sky blue
+
         // Show rocket from exterior
         this.rocket.visible = true;
         this.flames.visible = true;
         this.smokeParticles.visible = true;
 
+        console.log('🚀 Rocket visibility set:', this.rocket.visible);
+        console.log('🚀 Rocket position:', this.rocket.position);
+
         // Add bright launch lighting
-        const launchLight = new THREE.DirectionalLight(0xffffff, 2);
+        const launchLight = new THREE.DirectionalLight(0xffffff, 3);
         launchLight.position.set(-10, 20, -20);
+        launchLight.castShadow = false;
         this.scene.add(launchLight);
         this.rocketObjects.push(launchLight);
 
+        // Add fill light from opposite side
+        const fillLight = new THREE.DirectionalLight(0xffffff, 1.5);
+        fillLight.position.set(10, 10, -20);
+        this.scene.add(fillLight);
+        this.rocketObjects.push(fillLight);
+
         // Add orange glow from engines
-        const engineGlow = new THREE.PointLight(0xff6600, 5, 30);
+        const engineGlow = new THREE.PointLight(0xff6600, 8, 40);
         engineGlow.position.copy(this.rocket.position);
         engineGlow.position.y -= 2;
         this.scene.add(engineGlow);
         this.rocketObjects.push(engineGlow);
 
+        // Add ambient light for overall illumination
+        const ambientLaunch = new THREE.AmbientLight(0xffffff, 0.8);
+        this.scene.add(ambientLaunch);
+        this.rocketObjects.push(ambientLaunch);
+
         // Position camera for good view of rocket (side angle)
-        this.camera.position.set(-20, 5, -30);
+        this.camera.position.set(-25, 8, -35);
         this.camera.lookAt(this.rocket.position);
+
+        console.log('🚀 Camera position:', this.camera.position);
+        console.log('🚀 Camera looking at:', this.rocket.position);
 
         // Fade from black to show launch
         fadeOverlay.classList.add('transparent');
@@ -559,11 +614,6 @@ export class RocketScene {
         // Show launch text
         textOverlay.textContent = 'LIFTOFF!';
         textOverlay.classList.add('show');
-
-        // Change scene background to Earth sky
-        if (this.scene.background) {
-            this.scene.background = new THREE.Color(0x4a90e2);
-        }
 
         // Animate rocket ascent
         const launchDuration = 8000;
