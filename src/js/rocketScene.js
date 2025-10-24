@@ -14,6 +14,10 @@ export class RocketScene {
         this.flames = null;
         this.dialogue = null;
         this.shakeIntensity = 0;
+        this.smokeParticles = null;
+        this.dustParticles = null;
+        this.reentryGlow = null;
+        this.planet = null;
 
         console.log('🚀 Rocket scene initialized');
     }
@@ -30,6 +34,12 @@ export class RocketScene {
 
         // Setup rocket exterior (for launch view)
         this.setupRocket();
+
+        // Create particle systems and effects
+        this.createSmokeParticles();
+        this.createDustParticles();
+        this.createReentryGlow();
+        this.createPlanetForArrival();
 
         // Hide training montage
         const trainingMontage = document.getElementById('training-montage');
@@ -316,6 +326,138 @@ export class RocketScene {
         this.rocketObjects.push(this.smokeParticles);
     }
 
+    createSmokeParticles() {
+        // Launch smoke/exhaust particles
+        const particleCount = 500;
+        const positions = new Float32Array(particleCount * 3);
+        const velocities = [];
+        const lifetimes = [];
+
+        for (let i = 0; i < particleCount; i++) {
+            positions[i * 3] = (Math.random() - 0.5) * 5;
+            positions[i * 3 + 1] = -35 + Math.random() * 5;
+            positions[i * 3 + 2] = -100 + (Math.random() - 0.5) * 5;
+
+            velocities.push(new THREE.Vector3(
+                (Math.random() - 0.5) * 0.2,
+                Math.random() * 0.5 + 0.3,
+                (Math.random() - 0.5) * 0.2
+            ));
+            lifetimes.push(Math.random() * 2);
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        const material = new THREE.PointsMaterial({
+            size: 1.5,
+            color: 0xff6600,
+            transparent: true,
+            opacity: 0.6,
+            blending: THREE.AdditiveBlending,
+            depthWrite: false
+        });
+
+        const particles = new THREE.Points(geometry, material);
+        particles.userData.velocities = velocities;
+        particles.userData.lifetimes = lifetimes;
+        particles.visible = false;
+
+        this.scene.add(particles);
+        this.smokeParticles = particles;
+        this.rocketObjects.push(particles);
+    }
+
+    createDustParticles() {
+        // Landing dust particles
+        const particleCount = 300;
+        const positions = new Float32Array(particleCount * 3);
+        const velocities = [];
+
+        for (let i = 0; i < particleCount; i++) {
+            const angle = Math.random() * Math.PI * 2;
+            const radius = Math.random() * 8;
+
+            positions[i * 3] = Math.cos(angle) * radius;
+            positions[i * 3 + 1] = 0;
+            positions[i * 3 + 2] = Math.sin(angle) * radius;
+
+            velocities.push(new THREE.Vector3(
+                Math.cos(angle) * 0.3,
+                Math.random() * 0.5 + 0.2,
+                Math.sin(angle) * 0.3
+            ));
+        }
+
+        const geometry = new THREE.BufferGeometry();
+        geometry.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+
+        const material = new THREE.PointsMaterial({
+            size: 0.8,
+            color: 0xccaa88,
+            transparent: true,
+            opacity: 0.5,
+            depthWrite: false
+        });
+
+        const particles = new THREE.Points(geometry, material);
+        particles.userData.velocities = velocities;
+        particles.visible = false;
+
+        this.scene.add(particles);
+        this.dustParticles = particles;
+        this.rocketObjects.push(particles);
+    }
+
+    createReentryGlow() {
+        // Heat shield glow for atmospheric re-entry
+        const glowGeometry = new THREE.SphereGeometry(2, 32, 32);
+        const glowMaterial = new THREE.MeshBasicMaterial({
+            color: 0xff3300,
+            transparent: true,
+            opacity: 0,
+            blending: THREE.AdditiveBlending
+        });
+
+        const glow = new THREE.Mesh(glowGeometry, glowMaterial);
+        glow.visible = false;
+
+        this.scene.add(glow);
+        this.reentryGlow = glow;
+        this.rocketObjects.push(glow);
+    }
+
+    createPlanetForArrival() {
+        // Create the terraformed planet for approach sequence
+        const planetGeometry = new THREE.SphereGeometry(15, 64, 64);
+        const planetMaterial = new THREE.MeshStandardMaterial({
+            color: 0xcc6633,
+            roughness: 0.8,
+            metalness: 0.2
+        });
+
+        const planet = new THREE.Mesh(planetGeometry, planetMaterial);
+        planet.position.set(0, 0, -500); // Far away initially
+        planet.visible = false;
+
+        // Add atmosphere glow
+        const atmosphereGeometry = new THREE.SphereGeometry(16, 64, 64);
+        const atmosphereMaterial = new THREE.MeshBasicMaterial({
+            color: 0x88ccff,
+            transparent: true,
+            opacity: 0.2,
+            side: THREE.BackSide,
+            blending: THREE.AdditiveBlending
+        });
+
+        const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+        planet.add(atmosphere);
+
+        this.scene.add(planet);
+        this.planet = planet;
+        this.rocketObjects.push(planet);
+    }
+
     startCountdown() {
         console.log('⏰ Countdown sequence starting...');
 
@@ -363,9 +505,7 @@ export class RocketScene {
         // Show rocket from exterior
         this.rocket.visible = true;
         this.flames.visible = true;
-        if (this.smokeParticles) {
-            this.smokeParticles.visible = true;
-        }
+        this.smokeParticles.visible = true;
 
         // Position camera for exterior view
         this.camera.position.set(0, 0, -50);
@@ -412,32 +552,208 @@ export class RocketScene {
                 flame.scale.y = scale;
             });
 
-            // Update smoke particles
-            if (this.smokeParticles && this.smokeParticles.visible) {
-                const positions = this.smokeParticles.geometry.attributes.position.array;
-                const velocities = this.smokeParticles.userData.velocities;
+            // Follow rocket with camera
+            this.camera.lookAt(this.rocket.position);
+        }, 16);
 
-                for (let i = 0; i < positions.length / 3; i++) {
-                    positions[i * 3] += velocities[i].x;
-                    positions[i * 3 + 1] += velocities[i].y;
-                    positions[i * 3 + 2] += velocities[i].z;
+        // Hide text after 3 seconds
+        setTimeout(() => {
+            textOverlay.classList.remove('show');
+        }, 3000);
+    }
 
-                    // Reset particles that fall too far
-                    if (positions[i * 3 + 1] < -10) {
-                        positions[i * 3 + 1] = -2;
-                    }
+    transitionToSpace() {
+        console.log('🌌 Transitioning to space...');
+
+        const textOverlay = document.getElementById('narrative-text');
+        const fadeOverlay = document.getElementById('fade-overlay');
+
+        // Show transition text
+        textOverlay.textContent = 'Leaving Earth\'s Atmosphere...';
+        textOverlay.classList.add('show');
+
+        // Gradually change background from blue to black
+        const duration = 5000;
+        const startTime = Date.now();
+        const startColor = new THREE.Color(0x000510);
+        const endColor = new THREE.Color(0x000000);
+
+        const spaceInterval = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            const progress = elapsed / duration;
+
+            if (progress >= 1) {
+                clearInterval(spaceInterval);
+                this.scene.background = endColor;
+
+                // Hide smoke particles in space
+                if (this.smokeParticles) {
+                    this.smokeParticles.visible = false;
                 }
-                this.smokeParticles.geometry.attributes.position.needsUpdate = true;
+
+                // Start planet approach
+                setTimeout(() => {
+                    this.approachPlanet();
+                }, 2000);
+                return;
             }
 
-            // Transition sky color from blue to dark as rocket ascends
-            if (this.scene.background && progress > 0.3) {
-                const skyProgress = (progress - 0.3) / 0.7;
-                const r = 0.29 * (1 - skyProgress);
-                const g = 0.56 * (1 - skyProgress);
-                const b = 0.88 * (1 - skyProgress);
-                this.scene.background.setRGB(r, g, b);
+            // Fade background color
+            const currentColor = startColor.clone().lerp(endColor, progress);
+            this.scene.background = currentColor;
+
+            // Fade out smoke particles
+            if (this.smokeParticles) {
+                this.smokeParticles.material.opacity = 0.6 * (1 - progress);
             }
+
+            // Continue rocket ascent
+            this.rocket.position.y += 0.5;
+        }, 16);
+
+        // Hide text after 4 seconds
+        setTimeout(() => {
+            textOverlay.classList.remove('show');
+        }, 4000);
+    }
+
+    approachPlanet() {
+        console.log('🌍 Approaching Planet Terraform...');
+
+        const textOverlay = document.getElementById('narrative-text');
+
+        // Show planet in distance
+        this.planet.visible = true;
+
+        // Show approach text
+        textOverlay.textContent = 'Approaching Planet Terraform...';
+        textOverlay.classList.add('show');
+
+        // Animate planet getting closer
+        const duration = 8000;
+        const startTime = Date.now();
+        const startZ = -500;
+        const endZ = -100;
+
+        const approachInterval = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            const progress = elapsed / duration;
+
+            if (progress >= 1) {
+                clearInterval(approachInterval);
+                this.startReentry();
+                return;
+            }
+
+            // Move planet closer
+            const easeProgress = progress * progress; // Ease in
+            this.planet.position.z = startZ + (endZ - startZ) * easeProgress;
+
+            // Rotate planet slowly
+            this.planet.rotation.y += 0.001;
+        }, 16);
+
+        // Hide text after 4 seconds
+        setTimeout(() => {
+            textOverlay.classList.remove('show');
+        }, 4000);
+    }
+
+    startReentry() {
+        console.log('🔥 Beginning atmospheric re-entry...');
+
+        const textOverlay = document.getElementById('narrative-text');
+        const fadeOverlay = document.getElementById('fade-overlay');
+
+        // Show re-entry text
+        textOverlay.textContent = 'Beginning Atmospheric Re-entry...';
+        textOverlay.classList.add('show');
+
+        // Show re-entry glow
+        this.reentryGlow.visible = true;
+        this.reentryGlow.position.copy(this.rocket.position);
+
+        // Increase shake for turbulence
+        this.shakeIntensity = 1.5;
+
+        // Animate re-entry
+        const duration = 6000;
+        const startTime = Date.now();
+
+        const reentryInterval = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            const progress = elapsed / duration;
+
+            if (progress >= 1) {
+                clearInterval(reentryInterval);
+                this.startLanding();
+                return;
+            }
+
+            // Pulsate glow
+            const pulse = Math.sin(Date.now() * 0.01) * 0.3 + 0.7;
+            this.reentryGlow.material.opacity = pulse * 0.8;
+            this.reentryGlow.position.copy(this.rocket.position);
+
+            // Shake increases then decreases
+            const shakeCurve = Math.sin(progress * Math.PI);
+            this.shakeIntensity = 1.5 * shakeCurve;
+
+            // Move rocket towards planet
+            this.rocket.position.z -= 0.5;
+            this.rocket.position.y -= 0.2;
+        }, 16);
+
+        // Hide text after 3 seconds
+        setTimeout(() => {
+            textOverlay.classList.remove('show');
+        }, 3000);
+    }
+
+    startLanding() {
+        console.log('🛬 Landing sequence initiated...');
+
+        const textOverlay = document.getElementById('narrative-text');
+        const fadeOverlay = document.getElementById('fade-overlay');
+
+        // Hide re-entry glow
+        this.reentryGlow.visible = false;
+
+        // Show landing text
+        textOverlay.textContent = 'Landing Sequence Initiated...';
+        textOverlay.classList.add('show');
+
+        // Show dust particles
+        this.dustParticles.visible = true;
+
+        // Animate landing
+        const duration = 5000;
+        const startTime = Date.now();
+        const startY = this.rocket.position.y;
+        const targetY = -10;
+
+        const landingInterval = setInterval(() => {
+            const elapsed = Date.now() - startTime;
+            const progress = elapsed / duration;
+
+            if (progress >= 1) {
+                clearInterval(landingInterval);
+                this.rocket.position.y = targetY;
+                this.shakeIntensity = 0;
+
+                // Final impact
+                setTimeout(() => {
+                    this.transitionToCockpit();
+                }, 1000);
+                return;
+            }
+
+            // Ease out landing
+            const easeProgress = 1 - Math.pow(1 - progress, 3);
+            this.rocket.position.y = startY + (targetY - startY) * easeProgress;
+
+            // Gentle shake
+            this.shakeIntensity = 0.3 * (1 - progress);
         }, 16);
 
         // Hide text after 3 seconds
@@ -778,6 +1094,66 @@ export class RocketScene {
 
             // Decay shake
             this.shakeIntensity *= 0.95;
+        }
+
+        // Animate smoke particles
+        if (this.smokeParticles && this.smokeParticles.visible) {
+            const positions = this.smokeParticles.geometry.attributes.position.array;
+            const velocities = this.smokeParticles.userData.velocities;
+
+            for (let i = 0; i < velocities.length; i++) {
+                const i3 = i * 3;
+
+                // Update position
+                positions[i3] += velocities[i].x;
+                positions[i3 + 1] += velocities[i].y;
+                positions[i3 + 2] += velocities[i].z;
+
+                // Reset particles that drift too far
+                if (positions[i3 + 1] > 50) {
+                    positions[i3] = (Math.random() - 0.5) * 5;
+                    positions[i3 + 1] = -35 + Math.random() * 5;
+                    positions[i3 + 2] = -100 + (Math.random() - 0.5) * 5;
+                }
+            }
+
+            this.smokeParticles.geometry.attributes.position.needsUpdate = true;
+        }
+
+        // Animate dust particles
+        if (this.dustParticles && this.dustParticles.visible) {
+            const positions = this.dustParticles.geometry.attributes.position.array;
+            const velocities = this.dustParticles.userData.velocities;
+
+            for (let i = 0; i < velocities.length; i++) {
+                const i3 = i * 3;
+
+                // Update position
+                positions[i3] += velocities[i].x;
+                positions[i3 + 1] += velocities[i].y;
+                positions[i3 + 2] += velocities[i].z;
+
+                // Apply gravity
+                velocities[i].y -= 0.01;
+
+                // Reset particles that fall or drift too far
+                if (positions[i3 + 1] < -2 || Math.abs(positions[i3]) > 20) {
+                    const angle = Math.random() * Math.PI * 2;
+                    const radius = Math.random() * 8;
+
+                    positions[i3] = Math.cos(angle) * radius;
+                    positions[i3 + 1] = 0;
+                    positions[i3 + 2] = Math.sin(angle) * radius;
+
+                    velocities[i].set(
+                        Math.cos(angle) * 0.3,
+                        Math.random() * 0.5 + 0.2,
+                        Math.sin(angle) * 0.3
+                    );
+                }
+            }
+
+            this.dustParticles.geometry.attributes.position.needsUpdate = true;
         }
 
         // Flicker screens in cockpit

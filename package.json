@@ -7,7 +7,7 @@
   "scripts": {
     "start": "npx http-server -p 8001 -o",
     "serve": "npx http-server -p 8001",
-    "test": "node test-cinematic.js"
+    "test": "node playwright/tests/test-cinematic.js"
   },
   "keywords": [
     "threejs",
