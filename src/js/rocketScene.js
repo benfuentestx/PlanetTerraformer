@@ -180,6 +180,35 @@ export class RocketScene {
         // External rocket model (for exterior shots)
         const rocketGroup = new THREE.Group();
 
+        // Launchpad ground
+        const launchpadGeometry = new THREE.CylinderGeometry(8, 8, 0.5, 32);
+        const launchpadMaterial = new THREE.MeshStandardMaterial({
+            color: 0x444444,
+            roughness: 0.8,
+            metalness: 0.2
+        });
+        const launchpad = new THREE.Mesh(launchpadGeometry, launchpadMaterial);
+        launchpad.position.y = -0.5;
+        rocketGroup.add(launchpad);
+
+        // Launchpad details (yellow/black stripes)
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const stripeGeometry = new THREE.BoxGeometry(0.5, 0.1, 4);
+            const stripeMaterial = new THREE.MeshStandardMaterial({
+                color: i % 2 === 0 ? 0xffff00 : 0x000000,
+                roughness: 0.7
+            });
+            const stripe = new THREE.Mesh(stripeGeometry, stripeMaterial);
+            stripe.position.set(
+                Math.cos(angle) * 6,
+                -0.2,
+                Math.sin(angle) * 6
+            );
+            stripe.rotation.y = angle;
+            rocketGroup.add(stripe);
+        }
+
         // Main body (cylinder)
         const bodyGeometry = new THREE.CylinderGeometry(1, 1, 10, 32);
         const bodyMaterial = new THREE.MeshStandardMaterial({
@@ -241,8 +270,8 @@ export class RocketScene {
         // Rocket flames (initially hidden)
         this.createFlames(rocketGroup);
 
-        // Position rocket far away for launch view
-        rocketGroup.position.set(0, -30, -100);
+        // Position rocket on launchpad (visible in front of camera)
+        rocketGroup.position.set(0, 0, -50);
         rocketGroup.visible = false;
 
         this.scene.add(rocketGroup);
@@ -335,8 +364,8 @@ export class RocketScene {
 
         for (let i = 0; i < particleCount; i++) {
             positions[i * 3] = (Math.random() - 0.5) * 5;
-            positions[i * 3 + 1] = -35 + Math.random() * 5;
-            positions[i * 3 + 2] = -100 + (Math.random() - 0.5) * 5;
+            positions[i * 3 + 1] = -5 + Math.random() * 5;  // Near ground level
+            positions[i * 3 + 2] = -50 + (Math.random() - 0.5) * 5;  // Match rocket Z position
 
             velocities.push(new THREE.Vector3(
                 (Math.random() - 0.5) * 0.2,
@@ -507,9 +536,22 @@ export class RocketScene {
         this.flames.visible = true;
         this.smokeParticles.visible = true;
 
-        // Position camera for exterior view
-        this.camera.position.set(0, 0, -50);
-        this.camera.lookAt(0, 0, -100);
+        // Add bright launch lighting
+        const launchLight = new THREE.DirectionalLight(0xffffff, 2);
+        launchLight.position.set(-10, 20, -20);
+        this.scene.add(launchLight);
+        this.rocketObjects.push(launchLight);
+
+        // Add orange glow from engines
+        const engineGlow = new THREE.PointLight(0xff6600, 5, 30);
+        engineGlow.position.copy(this.rocket.position);
+        engineGlow.position.y -= 2;
+        this.scene.add(engineGlow);
+        this.rocketObjects.push(engineGlow);
+
+        // Position camera for good view of rocket (side angle)
+        this.camera.position.set(-20, 5, -30);
+        this.camera.lookAt(this.rocket.position);
 
         // Fade from black to show launch
         fadeOverlay.classList.add('transparent');
@@ -525,8 +567,8 @@ export class RocketScene {
 
         // Animate rocket ascent
         const launchDuration = 8000;
-        const startY = -30;
-        const endY = 100;
+        const startY = 0;  // Start from ground level
+        const endY = 150;
         const startTime = Date.now();
 
         const launchInterval = setInterval(() => {
@@ -1112,8 +1154,8 @@ export class RocketScene {
                 // Reset particles that drift too far
                 if (positions[i3 + 1] > 50) {
                     positions[i3] = (Math.random() - 0.5) * 5;
-                    positions[i3 + 1] = -35 + Math.random() * 5;
-                    positions[i3 + 2] = -100 + (Math.random() - 0.5) * 5;
+                    positions[i3 + 1] = -5 + Math.random() * 5;
+                    positions[i3 + 2] = -50 + (Math.random() - 0.5) * 5;
                 }
             }
 
