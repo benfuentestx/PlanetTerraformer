@@ -35,15 +35,17 @@ export class RocketScene {
         // Setup rocket exterior (for launch view)
         this.setupRocket();
 
-        // Create particle systems and effects
-        this.createSmokeParticles();
-        this.createDustParticles();
-        this.createReentryGlow();
-        this.createPlanetForArrival();
-
         // Hide training montage
         const trainingMontage = document.getElementById('training-montage');
-        trainingMontage.style.display = 'none';
+        if (trainingMontage) {
+            trainingMontage.style.display = 'none';
+        }
+
+        // Hide conference room
+        const conferenceRoom = document.getElementById('conference-room');
+        if (conferenceRoom) {
+            conferenceRoom.style.display = 'none';
+        }
 
         // Show countdown sequence
         this.startCountdown();

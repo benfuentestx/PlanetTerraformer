@@ -665,6 +665,24 @@ export class ConferenceScene {
     startGameplay() {
         // Transition to rocket launch scene
         console.log('🚀 Transitioning to rocket launch...');
+
+        // Stop all speech and cleanup
+        this.isActive = false;
+        if (window.speechSynthesis) {
+            window.speechSynthesis.cancel();
+        }
+
+        // Clear any ongoing intervals
+        if (this.mouthInterval) {
+            clearInterval(this.mouthInterval);
+        }
+
+        // Hide conference room
+        const conferenceRoom = document.getElementById('conference-room');
+        if (conferenceRoom) {
+            conferenceRoom.style.display = 'none';
+        }
+
         if (this.mainApp && this.mainApp.rocketScene) {
             this.mainApp.rocketScene.start();
         } else {
