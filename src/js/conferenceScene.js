@@ -93,6 +93,7 @@ export class ConferenceScene {
     skipToTraining() {
         console.log('⏩ Skipping conference to training...');
         this.isSkipping = true;
+        this.isActive = false;
 
         // Stop any ongoing speech
         if (window.speechSynthesis) {
@@ -104,10 +105,17 @@ export class ConferenceScene {
             clearInterval(this.mouthInterval);
         }
 
+        // Stop all character talking states
+        Object.values(this.characters).forEach(char => {
+            if (char) char.isTalking = false;
+        });
+
         // Hide conference room immediately
         const conferenceRoom = document.getElementById('conference-room');
-        conferenceRoom.classList.remove('show');
-        conferenceRoom.style.display = 'none';
+        if (conferenceRoom) {
+            conferenceRoom.classList.remove('show');
+            conferenceRoom.style.display = 'none';
+        }
 
         // Go straight to training montage
         this.startTrainingMontage();
@@ -481,6 +489,12 @@ export class ConferenceScene {
 
     async playDialogue() {
         for (let i = 0; i < this.dialogue.length; i++) {
+            // Check if scene has been skipped or deactivated
+            if (this.isSkipping || !this.isActive) {
+                console.log('⏩ Dialogue interrupted - skipping remaining lines');
+                return;
+            }
+
             this.dialogueIndex = i;
             const line = this.dialogue[i];
             const character = this.characters[line.position];
@@ -489,6 +503,11 @@ export class ConferenceScene {
 
             // Turn camera to look at speaker
             await this.turnCameraToSpeaker(line.lookAt);
+
+            // Check again after async operation
+            if (this.isSkipping || !this.isActive) {
+                return;
+            }
 
             // Update UI
             document.getElementById('speaker-name').textContent = line.speaker;
@@ -501,6 +520,11 @@ export class ConferenceScene {
             // Speak the dialogue using Web Speech API
             await this.speak(line.text, line.voice, line.pitch, line.rate);
 
+            // Check again after speech
+            if (this.isSkipping || !this.isActive) {
+                return;
+            }
+
             // Stop mouth animation
             character.isTalking = false;
             this.animateMouth(character, false);
@@ -511,9 +535,12 @@ export class ConferenceScene {
 
         console.log('✅ Conference dialogue complete');
 
-        // Fade out conference room
-        await this.wait(1000);
-        this.fadeOut();
+        // Only continue if not skipped
+        if (!this.isSkipping && this.isActive) {
+            // Fade out conference room
+            await this.wait(1000);
+            this.fadeOut();
+        }
     }
 
     turnCameraToSpeaker(lookAtPosition) {
