@@ -60,9 +60,20 @@ export class RocketScene {
 
         console.log('Rocket created at position:', this.rocket.position);
 
+        // ADD BIG RED TEST CUBE TO VERIFY RENDERING WORKS
+        const testCube = new THREE.Mesh(
+            new THREE.BoxGeometry(10, 10, 10),
+            new THREE.MeshBasicMaterial({ color: 0xff0000 })
+        );
+        testCube.position.set(0, 0, 0);
+        this.scene.add(testCube);
+        this.rocketObjects.push(testCube);
+        console.log('🟥 ADDED GIANT RED TEST CUBE AT ORIGIN');
+
         // Reset camera to default position
         this.camera.position.set(0, 2, 20);
         this.camera.lookAt(0, 0, 0);
+        console.log('Camera looking at origin, should see red cube');
 
         // Hide training montage
         const trainingMontage = document.getElementById('training-montage');
@@ -74,6 +85,15 @@ export class RocketScene {
         const conferenceRoom = document.getElementById('conference-room');
         if (conferenceRoom) {
             conferenceRoom.style.display = 'none';
+        }
+
+        // FORCE FADE OVERLAY TO BE INVISIBLE IMMEDIATELY
+        const fadeOverlay = document.getElementById('fade-overlay');
+        if (fadeOverlay) {
+            fadeOverlay.style.transition = 'none'; // Disable transition
+            fadeOverlay.style.opacity = '0';
+            fadeOverlay.classList.add('transparent');
+            console.log('🔓 FORCED fade overlay to opacity 0');
         }
 
         // Show countdown sequence
@@ -521,18 +541,10 @@ export class RocketScene {
         const textOverlay = document.getElementById('narrative-text');
         const fadeOverlay = document.getElementById('fade-overlay');
 
-        // Ensure fade overlay is visible initially (black screen)
-        fadeOverlay.style.opacity = '1';
-        fadeOverlay.classList.remove('transparent');
-
-        // Show first countdown text after brief pause, then fade from black
-        setTimeout(() => {
-            textOverlay.textContent = 'MISSION: TERRAFORM EXPLORATION';
-            textOverlay.classList.add('show');
-
-            // Fade from black to show text
-            fadeOverlay.classList.add('transparent');
-        }, 500);
+        // DON'T re-enable the black overlay - we already cleared it in start()
+        // Just show the countdown text
+        textOverlay.textContent = 'MISSION: TERRAFORM EXPLORATION';
+        textOverlay.classList.add('show');
 
         const countdown = [
             { time: 3500, text: 'DESTINATION: PLANET TERRAFORM', duration: 3000 },
