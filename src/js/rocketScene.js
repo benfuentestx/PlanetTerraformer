@@ -25,11 +25,23 @@ export class RocketScene {
     start() {
         console.log('🚀 Starting rocket launch sequence...');
         this.isActive = true;
+        this.launchInProgress = false; // Reset launch flag
 
-        // Kill any GSAP animations on camera
+        // Clear all previous timeouts/intervals to prevent old animations
+        const highestId = setTimeout(() => {});
+        for (let i = 0; i < highestId; i++) {
+            clearTimeout(i);
+            clearInterval(i);
+        }
+
+        // Kill any GSAP animations on everything
         if (window.gsap) {
             window.gsap.killTweensOf(this.camera.position);
             window.gsap.killTweensOf(this.camera.rotation);
+            if (this.rocket) {
+                window.gsap.killTweensOf(this.rocket.position);
+                window.gsap.killTweensOf(this.rocket);
+            }
         }
 
         // Clean up previous scene objects
@@ -40,6 +52,8 @@ export class RocketScene {
 
         // Setup rocket exterior (for launch view)
         this.setupRocket();
+
+        console.log('Rocket created at position:', this.rocket.position);
 
         // Reset camera to default position
         this.camera.position.set(0, 2, 20);
@@ -543,13 +557,30 @@ export class RocketScene {
     }
 
     startLaunch() {
-        console.log('🚀 LIFTOFF!');
+        console.log('🚀 LIFTOFF! (startLaunch called)');
+
+        // Prevent multiple calls
+        if (this.launchInProgress) {
+            console.warn('⚠️ Launch already in progress, ignoring duplicate call');
+            return;
+        }
+        this.launchInProgress = true;
 
         const textOverlay = document.getElementById('narrative-text');
         const fadeOverlay = document.getElementById('fade-overlay');
 
+        // Kill any animations on rocket position
+        if (window.gsap) {
+            window.gsap.killTweensOf(this.rocket.position);
+        }
+
         // Reset rocket to starting position
         this.rocket.position.set(0, 0, -50);
+        console.log('Reset rocket position to:', this.rocket.position);
+
+        // Force update
+        this.rocket.updateMatrix();
+        this.rocket.updateMatrixWorld(true);
 
         // Show rocket from exterior
         console.log('Setting rocket visible:', this.rocket);
