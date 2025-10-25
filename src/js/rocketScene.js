@@ -539,9 +539,14 @@ export class RocketScene {
         const fadeOverlay = document.getElementById('fade-overlay');
 
         // Show rocket from exterior
+        console.log('Setting rocket visible:', this.rocket);
         this.rocket.visible = true;
         this.flames.visible = true;
-        this.smokeParticles.visible = true;
+        if (this.smokeParticles) {
+            this.smokeParticles.visible = true;
+        } else {
+            console.warn('⚠️ smokeParticles not found');
+        }
 
         // Add bright launch lighting
         const launchLight = new THREE.DirectionalLight(0xffffff, 2);
@@ -559,9 +564,13 @@ export class RocketScene {
         // Position camera for good view of rocket (side angle)
         this.camera.position.set(-20, 5, -30);
         this.camera.lookAt(this.rocket.position);
+        console.log('Camera positioned at:', this.camera.position);
+        console.log('Rocket position:', this.rocket.position);
 
         // Fade from black to show launch
+        console.log('Fading out black overlay...');
         fadeOverlay.classList.add('transparent');
+        console.log('Fade overlay classes:', fadeOverlay.className);
 
         // Show launch text
         textOverlay.textContent = 'LIFTOFF!';
@@ -570,6 +579,7 @@ export class RocketScene {
         // Change scene background to Earth sky
         if (this.scene.background) {
             this.scene.background = new THREE.Color(0x4a90e2);
+            console.log('Scene background set to blue sky');
         }
 
         // Animate rocket ascent
