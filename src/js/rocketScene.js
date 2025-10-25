@@ -1194,11 +1194,9 @@ export class RocketScene {
                     positions[i3 + 1] = 0;
                     positions[i3 + 2] = Math.sin(angle) * radius;
 
-                    velocities[i].set(
-                        Math.cos(angle) * 0.3,
-                        Math.random() * 0.5 + 0.2,
-                        Math.sin(angle) * 0.3
-                    );
+                    velocities[i].x = Math.cos(angle) * 0.3;
+                    velocities[i].y = Math.random() * 0.5 + 0.2;
+                    velocities[i].z = Math.sin(angle) * 0.3;
                 }
             }
 
