@@ -66,6 +66,14 @@ export class RocketScene {
             console.log('🌍 Hidden main terraformed planet');
         }
 
+        // Hide all conference scene objects
+        if (this.mainApp && this.mainApp.conferenceScene) {
+            this.mainApp.conferenceScene.roomObjects.forEach(obj => {
+                if (obj) obj.visible = false;
+            });
+            console.log('🏢 Hidden conference room objects');
+        }
+
         // Reset camera to default position
         this.camera.position.set(0, 2, 20);
         this.camera.lookAt(0, 0, 0);
