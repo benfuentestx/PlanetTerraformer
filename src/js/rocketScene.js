@@ -60,20 +60,9 @@ export class RocketScene {
 
         console.log('Rocket created at position:', this.rocket.position);
 
-        // ADD BIG RED TEST CUBE TO VERIFY RENDERING WORKS
-        const testCube = new THREE.Mesh(
-            new THREE.BoxGeometry(10, 10, 10),
-            new THREE.MeshBasicMaterial({ color: 0xff0000 })
-        );
-        testCube.position.set(0, 0, 0);
-        this.scene.add(testCube);
-        this.rocketObjects.push(testCube);
-        console.log('🟥 ADDED GIANT RED TEST CUBE AT ORIGIN');
-
         // Reset camera to default position
         this.camera.position.set(0, 2, 20);
         this.camera.lookAt(0, 0, 0);
-        console.log('Camera looking at origin, should see red cube');
 
         // Hide training montage
         const trainingMontage = document.getElementById('training-montage');
