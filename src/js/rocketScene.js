@@ -26,6 +26,12 @@ export class RocketScene {
         console.log('🚀 Starting rocket launch sequence...');
         this.isActive = true;
 
+        // Kill any GSAP animations on camera
+        if (window.gsap) {
+            window.gsap.killTweensOf(this.camera.position);
+            window.gsap.killTweensOf(this.camera.rotation);
+        }
+
         // Clean up previous scene objects
         this.cleanup();
 
@@ -34,6 +40,10 @@ export class RocketScene {
 
         // Setup rocket exterior (for launch view)
         this.setupRocket();
+
+        // Reset camera to default position
+        this.camera.position.set(0, 2, 20);
+        this.camera.lookAt(0, 0, 0);
 
         // Hide training montage
         const trainingMontage = document.getElementById('training-montage');
@@ -537,6 +547,9 @@ export class RocketScene {
 
         const textOverlay = document.getElementById('narrative-text');
         const fadeOverlay = document.getElementById('fade-overlay');
+
+        // Reset rocket to starting position
+        this.rocket.position.set(0, 0, -50);
 
         // Show rocket from exterior
         console.log('Setting rocket visible:', this.rocket);
