@@ -60,6 +60,12 @@ export class RocketScene {
 
         console.log('Rocket created at position:', this.rocket.position);
 
+        // Hide the main planet from the terraforming cinematic
+        if (this.mainApp && this.mainApp.planet && this.mainApp.planet.mesh) {
+            this.mainApp.planet.mesh.visible = false;
+            console.log('🌍 Hidden main terraformed planet');
+        }
+
         // Reset camera to default position
         this.camera.position.set(0, 2, 20);
         this.camera.lookAt(0, 0, 0);
