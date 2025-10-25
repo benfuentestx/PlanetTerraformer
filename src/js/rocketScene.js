@@ -70,9 +70,7 @@ export class RocketScene {
         for (let i = 0; i < 3; i++) {
             const screenGeometry = new THREE.PlaneGeometry(0.6, 0.4);
             const screenMaterial = new THREE.MeshBasicMaterial({
-                color: 0x00ff88,
-                emissive: 0x00ff88,
-                emissiveIntensity: 0.5
+                color: 0x00ff88
             });
             const screen = new THREE.Mesh(screenGeometry, screenMaterial);
             screen.position.set(-0.8 + i * 0.8, 1.3, -1.4);
@@ -82,6 +80,7 @@ export class RocketScene {
 
             // Make screens flicker with data
             screen.userData.flickerSpeed = 2 + Math.random() * 2;
+            screen.userData.baseColor = 0x00ff88;
         }
 
         // Buttons and switches (random colored indicators)
@@ -1104,11 +1103,18 @@ export class RocketScene {
     createDustParticles() {
         const particleCount = 100;
         const positions = new Float32Array(particleCount * 3);
+        const velocities = [];
 
         for (let i = 0; i < particleCount; i++) {
             positions[i * 3] = (Math.random() - 0.5) * 20;
             positions[i * 3 + 1] = Math.random() * 3;
             positions[i * 3 + 2] = (Math.random() - 0.5) * 20;
+
+            velocities.push({
+                x: (Math.random() - 0.5) * 0.1,
+                y: -0.05 - Math.random() * 0.1,
+                z: (Math.random() - 0.5) * 0.1
+            });
         }
 
         const dustGeometry = new THREE.BufferGeometry();
@@ -1122,6 +1128,7 @@ export class RocketScene {
         });
 
         this.dustParticles = new THREE.Points(dustGeometry, dustMaterial);
+        this.dustParticles.userData.velocities = velocities;
         this.scene.add(this.dustParticles);
         this.rocketObjects.push(this.dustParticles);
     }
@@ -1201,9 +1208,12 @@ export class RocketScene {
         // Flicker screens in cockpit
         if (this.cockpitView && this.cockpitView.visible) {
             this.cockpitView.children.forEach(child => {
-                if (child.userData.flickerSpeed) {
-                    const flicker = Math.sin(Date.now() * 0.001 * child.userData.flickerSpeed) * 0.5 + 0.5;
-                    child.material.emissiveIntensity = 0.3 + flicker * 0.4;
+                if (child.userData.flickerSpeed && child.userData.baseColor) {
+                    const flicker = Math.sin(Date.now() * 0.001 * child.userData.flickerSpeed) * 0.3 + 0.7;
+                    const baseColor = new THREE.Color(child.userData.baseColor);
+                    child.material.color.r = baseColor.r * flicker;
+                    child.material.color.g = baseColor.g * flicker;
+                    child.material.color.b = baseColor.b * flicker;
                 }
             });
         }
