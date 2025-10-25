@@ -18,6 +18,8 @@ export class RocketScene {
         this.dustParticles = null;
         this.reentryGlow = null;
         this.planet = null;
+        this.launchInterval = null;
+        this.spaceInterval = null;
 
         console.log('🚀 Rocket scene initialized');
     }
@@ -27,11 +29,14 @@ export class RocketScene {
         this.isActive = true;
         this.launchInProgress = false; // Reset launch flag
 
-        // Clear all previous timeouts/intervals to prevent old animations
-        const highestId = setTimeout(() => {});
-        for (let i = 0; i < highestId; i++) {
-            clearTimeout(i);
-            clearInterval(i);
+        // Clear previous animation intervals
+        if (this.launchInterval) {
+            clearInterval(this.launchInterval);
+            this.launchInterval = null;
+        }
+        if (this.spaceInterval) {
+            clearInterval(this.spaceInterval);
+            this.spaceInterval = null;
         }
 
         // Kill any GSAP animations on everything
@@ -632,12 +637,13 @@ export class RocketScene {
         const endY = 150;
         const startTime = Date.now();
 
-        const launchInterval = setInterval(() => {
+        this.launchInterval = setInterval(() => {
             const elapsed = Date.now() - startTime;
             const progress = elapsed / launchDuration;
 
             if (progress >= 1) {
-                clearInterval(launchInterval);
+                clearInterval(this.launchInterval);
+                this.launchInterval = null;
                 this.transitionToSpace();
                 return;
             }
@@ -681,12 +687,13 @@ export class RocketScene {
         const startColor = new THREE.Color(0x000510);
         const endColor = new THREE.Color(0x000000);
 
-        const spaceInterval = setInterval(() => {
+        this.spaceInterval = setInterval(() => {
             const elapsed = Date.now() - startTime;
             const progress = elapsed / duration;
 
             if (progress >= 1) {
-                clearInterval(spaceInterval);
+                clearInterval(this.spaceInterval);
+                this.spaceInterval = null;
                 this.scene.background = endColor;
 
                 // Hide smoke particles in space
