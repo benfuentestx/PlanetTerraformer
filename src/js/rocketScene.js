@@ -492,19 +492,27 @@ export class RocketScene {
         const textOverlay = document.getElementById('narrative-text');
         const fadeOverlay = document.getElementById('fade-overlay');
 
-        // Fade to black first
+        // Ensure fade overlay is visible initially (black screen)
         fadeOverlay.style.opacity = '1';
         fadeOverlay.classList.remove('transparent');
 
+        // Show first countdown text after brief pause, then fade from black
+        setTimeout(() => {
+            textOverlay.textContent = 'MISSION: TERRAFORM EXPLORATION';
+            textOverlay.classList.add('show');
+
+            // Fade from black to show text
+            fadeOverlay.classList.add('transparent');
+        }, 500);
+
         const countdown = [
-            { time: 1000, text: 'MISSION: TERRAFORM EXPLORATION', duration: 3000 },
-            { time: 4000, text: 'DESTINATION: PLANET TERRAFORM', duration: 3000 },
-            { time: 7000, text: 'LAUNCH SEQUENCE INITIATED', duration: 3000 },
-            { time: 10000, text: 'T-MINUS 10 SECONDS', duration: 2000 },
-            { time: 12000, text: '10... 9... 8...', duration: 1000 },
-            { time: 13000, text: '7... 6... 5...', duration: 1000 },
-            { time: 14000, text: '4... 3... 2...', duration: 1000 },
-            { time: 15000, text: '1... IGNITION!', duration: 1000 }
+            { time: 3500, text: 'DESTINATION: PLANET TERRAFORM', duration: 3000 },
+            { time: 6500, text: 'LAUNCH SEQUENCE INITIATED', duration: 3000 },
+            { time: 9500, text: 'T-MINUS 10 SECONDS', duration: 2000 },
+            { time: 11500, text: '10... 9... 8...', duration: 1000 },
+            { time: 12500, text: '7... 6... 5...', duration: 1000 },
+            { time: 13500, text: '4... 3... 2...', duration: 1000 },
+            { time: 14500, text: '1... IGNITION!', duration: 1000 }
         ];
 
         countdown.forEach(step => {
@@ -518,10 +526,10 @@ export class RocketScene {
             }, step.time);
         });
 
-        // Start launch at T+16 seconds
+        // Start launch at T+15.5 seconds
         setTimeout(() => {
             this.startLaunch();
-        }, 16000);
+        }, 15500);
     }
 
     startLaunch() {
